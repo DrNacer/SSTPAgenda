@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Project & Session Timer (v13 Same-Day Shift)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@500;700;800&family=Orbitron:wght@500&display=swap" rel="stylesheet">
+    <style>
+        /* --- Basic Styles --- */
+        :root {
+            --color-bg: #f8fafc; --color-text: #1f2937; --color-grid-line: #e5e7eb;
+            --color-header-bg: #f3f4f6; --color-edit-btn: #2563eb;
+            --color-delete-btn: #dc2626; --color-modal-bg: rgba(0, 0, 0, 0.6);
+            --color-modal-content-bg: #fff; --color-border: #cbd5e1;
+            --color-primary: #037ef3; --color-secondary: #ff8c00;
+            --color-day-header: #e0e7ff; --color-chapter-header: #fef3c7; /* Light Yellow for Chapter */
+            --color-filter-active: var(--color-primary);
+            --font-body: 'Lato', sans-serif; --font-heading: 'Montserrat', sans-serif;
+            --font-timer: 'Orbitron', sans-serif;
+        }
+        body { font-family: var(--font-body); background-color: var(--color-bg); color: var(--color-text); margin: 0; padding: 20px; font-size: 16px; line-height: 1.6; }
+        .container { max-width: 1100px; margin: 20px auto; background-color: #fff; padding: 25px 35px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); }
+        h1, h2, h3, h4 { font-family: var(--font-heading); color: var(--color-primary); text-align: center; margin-bottom: 0.5em; }
+        h1 { font-size: 2.2rem; margin-top: 0; margin-bottom: 0.2em; color: #1a202c;}
+        h2 { font-size: 1.5rem; color: var(--color-secondary); margin-bottom: 1em; font-weight: 700;}
+        .section-heading { display: flex; justify-content: center; align-items: center; gap: 15px; margin-bottom: 1em; }
+        .section-heading h2 { margin-bottom: 0; }
+        h3 { font-size: 1.3rem; color: var(--color-text); text-align: left; border-bottom: 2px solid var(--color-primary); padding-bottom: 0.4em; margin-top: 2em; display: flex; justify-content: space-between; align-items: center; }
+        h4 { font-size: 1.15rem; text-align: left; margin-bottom: 15px; color: #4a5568; font-weight: 700; }
+        button, input, select, label, textarea { font-family: inherit; font-size: inherit; }
+        button { cursor: pointer; transition: background-color 0.2s, transform 0.1s; }
+        button:hover { filter: brightness(1.1); }
+        button:active { transform: scale(0.98); }
+        *:focus-visible { outline: 3px solid var(--color-primary-light); outline-offset: 2px; border-radius: 4px; }
+        hr { margin: 40px 0; border: none; border-top: 1px solid var(--color-border); }
+
+        /* --- General UI --- */
+        .hidden { display: none !important; }
+        .collapsible-section .section-content { padding-top: 20px; }
+        .collapsible-section.collapsed .section-content { display: none; }
+        .toggle-button { font-size: 0.8rem; padding: 5px 12px; background-color: #64748b; color: white; border: none; border-radius: 4px; margin-left: 15px; }
+
+        /* --- Countdown Displays --- */
+        .countdown-container { margin-bottom: 25px; }
+        .countdown-display { text-align: center; padding: 15px; margin-bottom: 15px; background-color: #2d3748; color: #fff; border-radius: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.3); position: relative; }
+        .countdown-display .label { font-size: 1rem; font-family: var(--font-heading); color: #a0aec0; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+        .countdown-display .timer { font-family: var(--font-timer); font-size: 2rem; letter-spacing: 1px; color: var(--color-primary-light); margin-bottom: 10px; }
+        .countdown-display .timer span { display: inline-block; min-width: 40px; }
+        .countdown-display .session-info { font-size: 0.9rem; color: #e2e8f0; font-style: italic; }
+        .countdown-display .project-status { font-family: var(--font-heading); font-size: 1.5rem; color: #68d391; font-weight: 700; }
+        #fullscreenTimerBtn { padding: 7px 14px; font-size: 0.85rem; font-weight: 500; background-color: var(--color-secondary); color: white; border: none; border-radius: 5px; vertical-align: middle; }
+
+        /* --- Forms --- */
+        .form-section { margin-bottom: 30px; background-color: #fdfdff; padding: 25px; border-radius: 8px; border: 1px solid var(--color-border); box-shadow: 0 1px 2px rgba(0,0,0,0.03);}
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px 20px; align-items: start; }
+        .form-group { display: flex; flex-direction: column; }
+        .form-group label { margin-bottom: 8px; font-weight: bold; font-size: 0.9rem; color: #4a5568; }
+        .form-group input, .form-group select { padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 6px; width: 100%; box-sizing: border-box; background-color: #fff; }
+        .form-group input[type="file"] { padding: 8px; border: 1px dashed var(--color-border); font-size: 0.9rem;}
+        .form-group input[type="color"] { padding: 2px 4px; min-height: 42px; cursor: pointer;}
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(3, 126, 243, 0.2); }
+        .form-button { padding: 11px 22px; border: none; border-radius: 6px; color: #fff; cursor: pointer; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s; text-align: center; line-height: 1.2; margin-top: 10px; }
+        .form-button.small { padding: 5px 10px; font-size: 0.8rem; margin-left: 5px; vertical-align: middle;}
+        .form-button.add { background-color: #2f855a; } .form-button.save { background-color: #3b82f6; }
+        .form-button.cancel { background-color: #718096; } .form-button.update { background-color: var(--color-primary); }
+        .form-button.import { background-color: var(--color-secondary); margin-left: 10px; } .form-button.export { background-color: #2c7a7b; }
+        .form-group-split { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; }
+        .form-group-fullwidth { grid-column: 1 / -1; }
+        .image-preview-container { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+        .image-preview { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-border); background-color: var(--color-placeholder-bg); color: var(--color-placeholder-text); display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+        .form-button.clear { background-color: #a0aec0; font-size: 0.8rem; padding: 5px 10px; margin-top: 5px; }
+
+
+        /* --- Agenda Specific --- */
+        #sessionAgendaSection h3 { margin-top: 0; }
+        .agenda-filter-controls { margin-bottom: 25px; text-align: center; padding: 15px; background-color: #f9fafb; border-radius: 6px; border: 1px solid var(--color-border); }
+        .agenda-filter-controls h4 { margin: 0 0 12px 0; font-size: 1rem; color: var(--color-text); font-weight: 700;}
+        .agenda-filter-controls button { padding: 9px 18px; margin: 5px; border: 1px solid var(--color-border); border-radius: 6px; background-color: #fff; cursor: pointer; }
+        .agenda-filter-controls button.active { background-color: var(--color-filter-active); color: white; border-color: var(--color-filter-active); font-weight: bold; }
+        .agenda-filter-controls .specific-date-controls { display: inline-block; margin-left: 15px; vertical-align: middle;}
+        .agenda-filter-controls .specific-date-controls label { margin-right: 8px; font-size: 0.9rem;}
+        .agenda-filter-controls .specific-date-controls input[type="date"] { padding: 7px 10px; font-size: 0.9rem; border: 1px solid var(--color-border); border-radius: 4px;}
+
+        .agenda-table-wrapper { width: 100%; overflow-x: auto; margin-top: 20px; }
+        .agenda-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; background-color: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 3px 6px rgba(0,0,0,0.07); border: 1px solid var(--color-border); }
+        .agenda-table th, .agenda-table td { padding: 12px 15px; border-bottom: 1px solid var(--color-border); text-align: left; vertical-align: middle; }
+        .agenda-table th { font-weight: 700; font-family: var(--font-heading); white-space: nowrap; background-color: var(--color-header-bg); color: #4a5568; border-bottom-width: 2px; }
+        .agenda-table tbody tr:not(.agenda-day-header):not(.agenda-chapter-header) { transition: background-color 0.1s ease; }
+        .agenda-table tbody tr:not(.agenda-day-header):not(.agenda-chapter-header):hover { background-color: #f0f4f8; }
+        .agenda-table tbody tr.is-current-session td { background-color: #fffbea !important; } .agenda-table tbody tr.is-current-session { border-left: 5px solid var(--color-secondary); }
+        .agenda-table tbody tr.is-next-session td { background-color: #ebf8ff !important; } .agenda-table tbody tr.is-next-session { border-left: 5px solid var(--color-primary); }
+        .agenda-table .agenda-day-header th, .agenda-table .agenda-chapter-header th { padding: 10px 15px; text-align: left; font-weight: bold; border-bottom: 1px solid var(--color-border); }
+        .agenda-table .agenda-day-header th { background-color: var(--color-day-header); font-size: 1.15em; color: #2d3748; border-top: 2px solid #a0aec0; }
+        .agenda-table .agenda-chapter-header th { background-color: var(--color-chapter-header); font-size: 1.05em; color: var(--color-chapter-header-text); border-top: 1px solid #f6e05e; }
+
+        .agenda-table .agenda-session-row td { padding: 10px 15px; }
+        .agenda-table .session-image-cell { width: 60px; padding: 8px !important; text-align: center; }
+        .agenda-table .session-image { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; background-color: var(--color-placeholder-bg); color: var(--color-placeholder-text); display: inline-flex; align-items: center; justify-content: center; font-size: 1.3rem; overflow: hidden; border: 1px solid var(--color-grid-line); }
+        .agenda-table .session-info-cell { min-width: 280px; }
+        .agenda-table .session-title { font-weight: 700; font-size: 1em; color: var(--color-text); display: block; margin-bottom: 4px; }
+        .agenda-table .session-facilitator { color: #4a5568; font-size: 0.85em; }
+        .agenda-table .session-time-cell { width: 150px; white-space: nowrap; font-size: 0.9em; color: #4a5568;}
+        .agenda-table .session-duration { display: block; font-style: italic; font-size: 0.85em; color: var(--color-milestone);}
+        .agenda-table .col-actions { width: 80px; text-align: center !important; white-space: nowrap; vertical-align: middle; }
+        .agenda-table .action-btn { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 4px; opacity: 0.7; margin: 0 3px; }
+        .agenda-table .action-btn:hover { opacity: 1; }
+        .agenda-table .edit-btn { color: var(--color-primary); }
+        .agenda-table .delete-btn { color: var(--color-accent); }
+        .agenda-table td input.list-inline-edit { width: calc(100% - 10px); padding: 5px; font-size: inherit; border: 1px solid transparent; background-color: transparent; border-radius: 3px; box-sizing: border-box; margin: -5px 0; }
+        .agenda-table td input.list-inline-edit:hover { border-color: #ccc; }
+        .agenda-table td input.list-inline-edit:focus { border-color: var(--color-primary); background-color: #fff; box-shadow: 0 0 0 1px var(--color-primary); }
+        .agenda-table .session-info-cell input.session-title-input { font-weight: 700; font-size: 1em; color: var(--color-text); margin-bottom: 3px; }
+        .agenda-table .session-info-cell input.session-facilitator-input { font-size: 0.85em; color: #4a5568; }
+
+        /* --- Modal --- */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--color-modal-bg); z-index: 100; justify-content: center; align-items: center; overflow-y: auto; padding: 20px 0;}
+        .modal.visible { display: flex; }
+        .modal-content { background-color: var(--color-modal-content-bg); padding: 35px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); width: 90%; max-width: 750px; margin: auto; }
+        .modal-content h3 { margin-top: 0; margin-bottom: 25px; font-family: var(--font-heading); text-align: left; border: none; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 30px; }
+
+        /* --- Fullscreen Overlay --- */
+        #fullscreen-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%); color: var(--color-fullscreen-text); z-index: 2000; flex-direction: column; justify-content: center; align-items: center; padding: 30px; box-sizing: border-box; text-align: center; }
+        #fullscreen-overlay.visible { display: flex; }
+        #fullscreen-image { width: 180px; height: 180px; border-radius: 50%; margin-bottom: 30px; border: 5px solid rgba(255,255,255,0.5); object-fit: cover; box-shadow: 0 5px 25px rgba(0,0,0,0.4);}
+        #fullscreen-session-title { font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.5); }
+        #fullscreen-session-facilitator { font-size: 1.6rem; margin-bottom: 25px; color: #a0aec0; font-weight: 500; }
+        #fullscreen-timer-label { font-size: 1.8rem; color: #a0aec0; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        #fullscreen-timer { font-family: var(--font-timer); font-size: 6rem; color: var(--color-secondary); letter-spacing: 4px; margin-bottom: 40px; text-shadow: 2px 2px 5px rgba(0,0,0,0.3); }
+        #exit-fullscreen-btn { position: absolute; top: 25px; right: 25px; padding: 10px 18px; background-color: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.5); border-radius: 5px; cursor: pointer; font-size: 1rem; transition: background-color 0.2s; }
+        #exit-fullscreen-btn:hover { background-color: rgba(255,255,255,0.3); }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 id="projectNameDisplay">Project Countdown Timer</h1>
+        <!-- Project Countdown Display Area -->
+        <div id="project-countdown-display" class="countdown-container"></div>
+
+        <!-- Edit Project Settings (Collapsible) -->
+        <div id="editProjectSection" class="form-section collapsible-section collapsed">
+             <h3>Project Details <button class="toggle-button" data-target="editProjectSection">Show</button></h3>
+             <div class="section-content">
+                 <form id="projectSettingsForm" class="form-grid">
+                    <div class="form-group"> <label for="projectNameInput">Project Name:</label> <input type="text" id="projectNameInput"> </div>
+                    <div class="form-group"> <label for="projectStartDateInput">Project Start Date:</label> <input type="date" id="projectStartDateInput"> </div>
+                    <div class="form-group"> <label>&nbsp;</label> <button type="submit" class="form-button update">Update Project</button> </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Session Area -->
+        <hr>
+         <div class="section-heading">
+             <h2>Session Agenda & Countdown</h2>
+             <button id="fullscreenTimerBtn" title="Fullscreen Current/Next Session Timer">[ ] Fullscreen</button>
+        </div>
+         <div id="session-countdown-display" class="countdown-container"></div>
+
+        <div id="sessionAgendaSection">
+            <h3>Session Agenda
+                <button id="toggleAddSessionFormBtn" class="toggle-button" data-target="addSessionFormContainer">Show Add Form</button>
+            </h3>
+             <!-- Add Session Form (Collapsible) -->
+            <div id="addSessionFormContainer" class="collapsible-section collapsed form-section">
+                <div class="section-content">
+                    <h4>Add New Session</h4>
+                    <form id="addSessionForm" class="form-grid">
+                        <div class="form-group" style="grid-column: 1 / -1;"> <label for="sessionTitle">Session Title:</label> <input type="text" id="sessionTitle" required> </div>
+                        <div class="form-group" style="grid-column: 1 / 2;"> <label for="sessionFacilitator">Facilitator:</label> <input type="text" id="sessionFacilitator" required> </div>
+                        <div class="form-group" style="grid-column: 2 / -1;"> <label for="sessionChapter">Chapter/Topic (Optional):</label> <input type="text" id="sessionChapter" placeholder="e.g., Day 1: Foundations"> </div>
+                        <div class="form-group"> <label>Start Date & Time:</label> <div class="form-group-split"> <input type="date" id="sessionStartDate" required> <span>@</span> <input type="time" id="sessionStartTime" required> </div> </div>
+                        <div class="form-group"> <label>End Date & Time:</label> <div class="form-group-split"> <input type="date" id="sessionEndDate" required> <span>@</span> <input type="time" id="sessionEndTime" required> </div> </div>
+                        <div class="form-group"> <label for="sessionImageUrl">Image URL:</label> <input type="url" id="sessionImageUrl" placeholder="https://... or leave blank"> </div>
+                        <div class="form-group">
+                             <label for="sessionImageFile">Or Upload Image:</label>
+                             <input type="file" id="sessionImageFile" accept="image/*">
+                             <div class="image-preview-container">
+                                 <img id="addSessionImagePreview" src="#" alt="Preview" class="image-preview hidden">
+                                 <button type="button" id="addSessionClearImage" class="form-button small clear hidden">Clear</button>
+                             </div>
+                         </div>
+                        <div class="form-group form-group-fullwidth" style="align-items: flex-end;"> <button type="submit" class="form-button add">Add Session</button> </div>
+                    </form>
+                 </div>
+             </div>
+
+             <!-- Agenda Filters -->
+             <div class="agenda-filter-controls">
+                <h4>Filter Agenda:</h4>
+                <button data-filter="all" class="filter-btn active">Show All Days</button>
+                <button data-filter="today" class="filter-btn">Show Today</button>
+                <button data-filter="specific" class="filter-btn">Show Specific Date</button>
+                <span id="specificDateFilterControls" class="specific-date-controls hidden">
+                    <label for="specificDateInput">Date:</label>
+                    <input type="date" id="specificDateInput">
+                </span>
+             </div>
+
+            <!-- Agenda Table -->
+            <div class="agenda-table-wrapper">
+                <table class="agenda-table" id="session-agenda-table">
+                    <tbody id="session-agenda-tbody"></tbody>
+                </table>
+            </div>
+
+            <!-- Import/Export Section -->
+             <div id="importExportSection" class="form-section collapsible-section collapsed" style="margin-top: 25px;">
+                 <h3>Import / Export Agenda <button class="toggle-button" data-target="importExportSection">Show</button></h3>
+                 <div class="section-content form-grid" style="grid-template-columns: 1fr auto auto;">
+                      <div class="form-group">
+                         <label for="csvFileInput">Import from CSV:</label>
+                         <input type="file" id="csvFileInput" accept=".csv">
+                         <small>Cols: Title, Facilitator, StartTime(YYYY-MM-DD HH:MM), EndTime(YYYY-MM-DD HH:MM), ImageSrc, Chapter</small>
+                     </div>
+                     <div class="form-group">
+                         <label>&nbsp;</label>
+                         <button type="button" id="importCsvBtn" class="form-button import">Import CSV</button>
+                     </div>
+                      <div class="form-group">
+                         <label>Export Current Agenda:</label>
+                         <button type="button" id="exportCsvBtn" class="form-button export">Export to CSV</button>
+                     </div>
+                 </div>
+             </div>
+
+        </div>
+
+    </div><!-- End Container -->
+
+    <!-- Edit Session Modal -->
+    <div id="editSessionModal" class="modal">
+        <div class="modal-content">
+            <h3>Edit Session</h3>
+            <form id="editSessionForm">
+                <input type="hidden" id="editSessionIdHidden">
+                 <div class="form-grid" style="grid-template-columns: 1fr;"> <!-- Simplified grid for modal -->
+                     <div class="form-group"> <label for="editSessionTitle">Session Title:</label> <input type="text" id="editSessionTitle" required> </div>
+                     <div class="form-group"> <label for="editSessionFacilitator">Facilitator:</label> <input type="text" id="editSessionFacilitator" required> </div>
+                     <div class="form-group"> <label for="editSessionChapter">Chapter/Topic:</label> <input type="text" id="editSessionChapter" placeholder="e.g., Day 1: Foundations"> </div>
+                     <div class="form-group"> <label>Start Date & Time:</label> <div class="form-group-split"> <input type="date" id="editSessionStartDate" required> <span>@</span> <input type="time" id="editSessionStartTime" required> </div> </div>
+                     <div class="form-group"> <label>End Date & Time:</label> <div class="form-group-split"> <input type="date" id="editSessionEndDate" required> <span>@</span> <input type="time" id="editSessionEndTime" required> </div> </div>
+                      <div class="form-group"> <label for="editSessionImageUrl">Image URL:</label> <input type="url" id="editSessionImageUrl" placeholder="https://..."> </div>
+                      <div class="form-group">
+                            <label for="editSessionImageFile">Or Upload New Image:</label>
+                            <input type="file" id="editSessionImageFile" accept="image/*">
+                             <div class="image-preview-container">
+                                 <img id="editSessionImagePreview" src="#" alt="Preview" class="image-preview hidden">
+                                 <button type="button" id="editSessionClearImage" class="form-button small clear hidden">Clear Image</button>
+                             </div>
+                         </div>
+                 </div>
+                 <div class="modal-actions">
+                     <button type="button" id="cancelSessionEdit" class="form-button cancel">Cancel</button>
+                     <button type="submit" class="form-button save">Save Session</button>
+                 </div>
+            </form>
+        </div>
+    </div>
+
+     <!-- Fullscreen Overlay -->
+     <div id="fullscreen-overlay">
+        <button id="exit-fullscreen-btn" title="Exit Fullscreen">&times;</button>
+        <img id="fullscreen-image" src="#" alt="Session Image">
+        <h2 id="fullscreen-session-title">Session Title</h2>
+        <div id="fullscreen-session-facilitator">Facilitator</div>
+        <div id="fullscreen-timer-label">Starting In / Ending In</div>
+        <div id="fullscreen-timer">00d : 00h : 00m : 00s</div>
+    </div>
+
+
+    <script>
+        // --- STATE MANAGEMENT ---
+        let projectMetadata = { projectName: 'SSTP Soft Skills Summit', startDate: '' };
+        let sessionAgenda = [ /* Initial 5-Day Agenda Data - MAKE SURE TO UPDATE DATES! */
+             { id: `sess-101`, chapter: "Day 1: Foundations & Connection", title: 'Registration & Welcome Coffee', facilitator: 'OC Team', startTime: '2025-05-25 08:30', endTime: '2025-05-25 09:00', imageSrc: '' },
+             { id: `sess-102`, chapter: "Day 1: Foundations & Connection", title: 'Opening Ceremony: Igniting Potential', facilitator: 'OCP & LCVP', startTime: '2025-05-25 09:00', endTime: '2025-05-25 09:45', imageSrc: '' },
+             { id: `sess-103`, chapter: "Day 1: Foundations & Connection", title: 'AIESEC Impact & You', facilitator: 'AIESEC Member', startTime: '2025-05-25 09:45', endTime: '2025-05-25 10:15', imageSrc: '' },
+             { id: `sess-104`, chapter: "Day 1: Foundations & Connection", title: 'Icebreakers: Building Bridges', facilitator: 'DS Team', startTime: '2025-05-25 10:15', endTime: '2025-05-25 11:00', imageSrc: '' },
+             { id: `sess-105`, chapter: "Day 1: Foundations & Connection", title: 'Workshop: Mastering Communication', facilitator: 'Expert A', startTime: '2025-05-25 11:15', endTime: '2025-05-25 12:45', imageSrc: 'https://randomuser.me/api/portraits/women/1.jpg' },
+             { id: `sess-106`, chapter: "Day 1: Foundations & Connection", title: 'Lunch & Networking', facilitator: 'N/A', startTime: '2025-05-25 12:45', endTime: '2025-05-25 13:45', imageSrc: '' },
+             { id: `sess-107`, chapter: "Day 1: Foundations & Connection", title: 'Activity: Collaborative Challenge', facilitator: 'AM Team', startTime: '2025-05-25 13:45', endTime: '2025-05-25 15:15', imageSrc: '' },
+             { id: `sess-108`, chapter: "Day 1: Foundations & Connection", title: 'Day 1 Reflection & Closing', facilitator: 'OC Team', startTime: '2025-05-25 15:15', endTime: '2025-05-25 15:45', imageSrc: '' },
+             { id: `sess-201`, chapter: "Day 2: Growth & Resilience", title: 'Morning Energizer', facilitator: 'DS Team', startTime: '2025-05-26 09:00', endTime: '2025-05-26 09:15', imageSrc: '' },
+             { id: `sess-202`, chapter: "Day 2: Growth & Resilience", title: 'Workshop: Leadership Essentials', facilitator: 'Expert B', startTime: '2025-05-26 09:15', endTime: '2025-05-26 10:45', imageSrc: 'https://randomuser.me/api/portraits/men/2.jpg' },
+             { id: `sess-203`, chapter: "Day 2: Growth & Resilience", title: 'Break', facilitator: 'N/A', startTime: '2025-05-26 10:45', endTime: '2025-05-26 11:00', imageSrc: '' },
+             { id: `sess-204`, chapter: "Day 2: Growth & Resilience", title: 'Workshop: Adaptability & Resilience', facilitator: 'Expert C', startTime: '2025-05-26 11:00', endTime: '2025-05-26 12:30', imageSrc: 'https://randomuser.me/api/portraits/women/3.jpg' },
+             { id: `sess-205`, chapter: "Day 2: Growth & Resilience", title: 'Lunch', facilitator: 'N/A', startTime: '2025-05-26 12:30', endTime: '2025-05-26 13:30', imageSrc: '' },
+             { id: `sess-206`, chapter: "Day 2: Growth & Resilience", title: 'Panel: Thriving in Dynamic Workplaces', facilitator: 'Moderator + Guests', startTime: '2025-05-26 13:30', endTime: '2025-05-26 14:45', imageSrc: '' },
+             { id: `sess-207`, chapter: "Day 2: Growth & Resilience", title: 'Group Activity: Scenario Challenges', facilitator: 'AM Team', startTime: '2025-05-26 14:45', endTime: '2025-05-26 15:45', imageSrc: '' },
+             { id: `sess-208`, chapter: "Day 2: Growth & Resilience", title: 'Day 2 Wrap-up', facilitator: 'OC Team', startTime: '2025-05-26 15:45', endTime: '2025-05-26 16:00', imageSrc: '' },
+             { id: `sess-301`, chapter: "Day 3: Innovation & Problem Solving", title: 'Recap & Morning Motivation', facilitator: 'OC Team', startTime: '2025-05-27 09:00', endTime: '2025-05-27 09:20', imageSrc: '' },
+             { id: `sess-302`, chapter: "Day 3: Innovation & Problem Solving", title: 'Workshop: Creative Problem Solving', facilitator: 'Expert D', startTime: '2025-05-27 09:20', endTime: '2025-05-27 10:50', imageSrc: 'https://randomuser.me/api/portraits/men/4.jpg' },
+             { id: `sess-303`, chapter: "Day 3: Innovation & Problem Solving", title: 'Break', facilitator: 'N/A', startTime: '2025-05-27 10:50', endTime: '2025-05-27 11:05', imageSrc: '' },
+             { id: `sess-304`, chapter: "Day 3: Innovation & Problem Solving", title: 'Workshop: Emotional Intelligence at Work', facilitator: 'Expert E', startTime: '2025-05-27 11:05', endTime: '2025-05-27 12:35', imageSrc: 'https://randomuser.me/api/portraits/women/5.jpg' },
+             { id: `sess-305`, chapter: "Day 3: Innovation & Problem Solving", title: 'Lunch', facilitator: 'N/A', startTime: '2025-05-27 12:35', endTime: '2025-05-27 13:35', imageSrc: '' },
+             { id: `sess-306`, chapter: "Day 3: Innovation & Problem Solving", title: 'Guest Speaker: Industry Insights', facilitator: 'Invited Speaker', startTime: '2025-05-27 13:35', endTime: '2025-05-27 14:35', imageSrc: '' },
+             { id: `sess-307`, chapter: "Day 3: Innovation & Problem Solving", title: 'Skill Practice: Pitching Ideas', facilitator: 'AM/DS Team', startTime: '2025-05-27 14:35', endTime: '2025-05-27 15:45', imageSrc: '' },
+             { id: `sess-308`, chapter: "Day 3: Innovation & Problem Solving", title: 'Day 3 Summary', facilitator: 'OC Team', startTime: '2025-05-27 15:45', endTime: '2025-05-27 16:00', imageSrc: '' },
+             { id: `sess-401`, chapter: "Day 4: Career Readiness", title: 'Morning Check-in', facilitator: 'OC Team', startTime: '2025-05-28 09:00', endTime: '2025-05-28 09:15', imageSrc: '' },
+             { id: `sess-402`, chapter: "Day 4: Career Readiness", title: 'Workshop: Building Your Professional Brand', facilitator: 'Expert F', startTime: '2025-05-28 09:15', endTime: '2025-05-28 10:45', imageSrc: 'https://randomuser.me/api/portraits/men/6.jpg' },
+             { id: `sess-403`, chapter: "Day 4: Career Readiness", title: 'Workshop: CV & Interview Excellence', facilitator: 'HR Specialist', startTime: '2025-05-28 11:00', endTime: '2025-05-28 12:30', imageSrc: '' },
+             { id: `sess-404`, chapter: "Day 4: Career Readiness", title: 'Lunch & Mock Interview Signups (Optional)', facilitator: 'N/A', startTime: '2025-05-28 12:30', endTime: '2025-05-28 13:30', imageSrc: '' },
+             { id: `sess-405`, chapter: "Day 4: Career Readiness", title: 'Networking Skills & Practice', facilitator: 'DS Team', startTime: '2025-05-28 13:30', endTime: '2025-05-28 14:45', imageSrc: '' },
+             { id: `sess-406`, chapter: "Day 4: Career Readiness", title: 'Optional: Mock Interviews / Open Space', facilitator: 'Various', startTime: '2025-05-28 14:45', endTime: '2025-05-28 15:45', imageSrc: '' },
+             { id: `sess-407`, chapter: "Day 4: Career Readiness", title: 'Day 4 Review', facilitator: 'OC Team', startTime: '2025-05-28 15:45', endTime: '2025-05-28 16:00', imageSrc: '' },
+             { id: `sess-501`, chapter: "Day 5: Application & Future", title: 'Project Simulation Kick-off', facilitator: 'AM Team', startTime: '2025-05-29 09:00', endTime: '2025-05-29 09:30', imageSrc: '' },
+             { id: `sess-502`, chapter: "Day 5: Application & Future", title: 'Group Work: Project Simulation', facilitator: 'Mentors', startTime: '2025-05-29 09:30', endTime: '2025-05-29 11:30', imageSrc: '' },
+             { id: `sess-503`, chapter: "Day 5: Application & Future", title: 'Break', facilitator: 'N/A', startTime: '2025-05-29 11:30', endTime: '2025-05-29 11:45', imageSrc: '' },
+             { id: `sess-504`, chapter: "Day 5: Application & Future", title: 'Group Presentations & Feedback', facilitator: 'Panel/Facis', startTime: '2025-05-29 11:45', endTime: '2025-05-29 13:15', imageSrc: '' },
+             { id: `sess-505`, chapter: "Day 5: Application & Future", title: 'Lunch', facilitator: 'N/A', startTime: '2025-05-29 13:15', endTime: '2025-05-29 14:15', imageSrc: '' },
+             { id: `sess-506`, chapter: "Day 5: Application & Future", title: 'Action Planning & Goal Setting', facilitator: 'Expert G', startTime: '2025-05-29 14:15', endTime: '2025-05-29 15:15', imageSrc: 'https://randomuser.me/api/portraits/women/7.jpg' },
+             { id: `sess-507`, chapter: "Day 5: Application & Future", title: 'Final Networking & Resource Sharing', facilitator: 'OC Team', startTime: '2025-05-29 15:15', endTime: '2025-05-29 15:45', imageSrc: '' },
+             { id: `sess-508`, chapter: "Day 5: Application & Future", title: 'Closing Ceremony & Awards', facilitator: 'OCP & LCVP', startTime: '2025-05-29 15:45', endTime: '2025-05-29 16:30', imageSrc: '' },
+        ];
+        let agendaFilter = 'all';
+        let agendaFilterDate = '';
+        let projectCountdownInterval = null;
+        let sessionCountdownInterval = null;
+        let fullscreenCountdownInterval = null;
+
+        // --- DOM Elements ---
+        const projectNameDisplay = document.getElementById('projectNameDisplay');
+        const projectCountdownDisplay = document.getElementById('project-countdown-display');
+        const editProjectSection = document.getElementById('editProjectSection');
+        const projectSettingsForm = document.getElementById('projectSettingsForm');
+        const projectNameInput = document.getElementById('projectNameInput');
+        const projectStartDateInput = document.getElementById('projectStartDateInput');
+        const sessionCountdownDisplay = document.getElementById('session-countdown-display');
+        const addSessionFormContainer = document.getElementById('addSessionFormContainer');
+        const toggleAddSessionFormBtn = document.getElementById('toggleAddSessionFormBtn');
+        const editSessionModal = document.getElementById('editSessionModal');
+        const editSessionForm = document.getElementById('editSessionForm');
+        const cancelSessionEditButton = document.getElementById('cancelSessionEdit');
+        const fullscreenOverlay = document.getElementById('fullscreen-overlay');
+        const fullscreenTimer = document.getElementById('fullscreen-timer');
+        const fullscreenTimerLabel = document.getElementById('fullscreen-timer-label');
+        const fullscreenImage = document.getElementById('fullscreen-image');
+        const fullscreenSessionTitle = document.getElementById('fullscreen-session-title');
+        const fullscreenSessionFacilitator = document.getElementById('fullscreen-session-facilitator');
+        const exitFullscreenBtn = document.getElementById('exit-fullscreen-btn');
+        const importExportSection = document.getElementById('importExportSection');
+
+         // --- Default Image Placeholders ---
+         const defaultImageUrl = 'https://via.placeholder.com/50/CCCCCC/FFFFFF?text=?';
+         const iconUrls = { break: 'https://via.placeholder.com/50/64748B/FFFFFF?text=%E2%98%95%EF%B8%8F', lunch: 'https://via.placeholder.com/50/FB923C/FFFFFF?text=%F0%9F%8D%BD', registration: 'https://via.placeholder.com/50/A3E635/FFFFFF?text=%F0%9F%93%9D', 'oc team': 'https://via.placeholder.com/50/3B82F6/FFFFFF?text=OC', 'aiesec member': 'https://via.placeholder.com/50/037EF3/FFFFFF?text=A', 'ds team': 'https://via.placeholder.com/50/EF4444/FFFFFF?text=DS', 'am team': 'https://via.placeholder.com/50/10B981/FFFFFF?text=AM', 'panel': 'https://via.placeholder.com/50/9C27B0/FFFFFF?text=P', 'panel/facis': 'https://via.placeholder.com/50/9C27B0/FFFFFF?text=P', 'moderator + guests': 'https://via.placeholder.com/50/9C27B0/FFFFFF?text=P','n/a': '', 'various': 'https://via.placeholder.com/50/CDDC39/000000?text=?', 'invited speaker': 'https://via.placeholder.com/50/607D8B/FFFFFF?text=GS', 'hr specialist': 'https://via.placeholder.com/50/00BCD4/FFFFFF?text=HR', 'mentors': 'https://via.placeholder.com/50/8BC34A/FFFFFF?text=M', 'ocp & lcvp': 'https://via.placeholder.com/50/037EF3/FFFFFF?text=A+'};
+
+
+        // --- Date & Time Helper Functions ---
+        const parseDateTime = (dateTimeString) => { if (!dateTimeString) return null; const formattedString = dateTimeString.replace('T', ' '); if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(formattedString)) return null; const parts = formattedString.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/); if (!parts) return null; const date = new Date(parts[1], parts[2] - 1, parts[3], parts[4], parts[5], 0); return isNaN(date.getTime()) ? null : date; };
+        const parseJustDate = (dateString) => { if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return null; const date = new Date(dateString + 'T00:00:00Z'); return isNaN(date.getTime()) ? null : date; }
+        const formatTime = (date) => date ? date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A';
+        const formatDate = (date) => date ? date.toLocaleDateString('en-CA') : 'N/A'; // YYYY-MM-DD
+        const formatDateForInputDate = (date) => date ? date.toISOString().split('T')[0] : '';
+        const formatTimeForInputTime = (date) => date ? date.toTimeString().substring(0, 5) : '';
+        const formatDuration = (start, end) => { if (!start || !end || start >= end) return 'N/A'; const diffMs = end.getTime() - start.getTime(); const totalMinutes = Math.round(diffMs / (1000 * 60)); const hours = Math.floor(totalMinutes / 60); const minutes = totalMinutes % 60; let durationStr = ''; if (hours > 0) durationStr += `${hours}h `; if (minutes > 0) durationStr += `${minutes}m`; return durationStr.trim() || '0m'; };
+        const formatCountdown = (diffMs) => { if (diffMs <= 0) return { d: 0, h: 0, m: 0, s: 0 }; const days = Math.floor(diffMs / (1000 * 60 * 60 * 24)); const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)); const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)); const seconds = Math.floor((diffMs % (1000 * 60)) / 1000); const pad = (num) => String(num).padStart(2, '0'); return { d: days, h: pad(hours), m: pad(minutes), s: pad(seconds) }; };
+        const formatCountdownTimerString = (time) => `${time.d}d : ${time.h}h : ${time.m}m : ${time.s}s`;
+        const addMinutes = (date, minutes) => new Date(date.getTime() + minutes * 60000);
+        const formatDateTimeToString = (date) => date ? `${formatDateForInputDate(date)} ${formatTimeForInputTime(date)}` : '';
+
+        // --- Image Handling ---
+        function getSessionImageSource(session) { if (session.imageSrc && session.imageSrc.startsWith('data:image')) return session.imageSrc; if (session.imageSrc && session.imageSrc.startsWith('http')) return session.imageSrc; const facilitatorLower = (session.facilitator || '').toLowerCase(); return iconUrls[facilitatorLower] ?? defaultImageUrl; }
+
+        // --- Countdown Logic --- (Unchanged)
+        function updateProjectCountdown() { if (!projectCountdownDisplay) return; const start = parseJustDate(projectMetadata.projectStartDate); if (!start) { projectCountdownDisplay.innerHTML = '<div class="countdown-display"><span class="label">Project Start Date Invalid</span></div>'; return; } const now = new Date(); const diff = start.getTime() - now.getTime(); if (diff <= 0) { projectCountdownDisplay.innerHTML = '<div class="countdown-display"><span class="project-status">Project In Progress!</span></div>'; if (projectCountdownInterval) clearInterval(projectCountdownInterval); projectCountdownInterval = null; } else { const time = formatCountdown(diff); projectCountdownDisplay.innerHTML = `<div class="countdown-display"><span class="label">Project Starts In:</span><div class="timer">${formatCountdownTimerString(time)}</div></div>`; } }
+        function findCurrentOrNextSession() { const now = new Date(); let nextSession = null; let currentSession = null; const filteredAgenda = getFilteredAgenda(); for (const session of filteredAgenda) { const start = parseDateTime(session.startTime); const end = parseDateTime(session.endTime); if (!start || !end) continue; if (now >= start && now < end) { currentSession = session; break; } else if (start > now) { nextSession = session; break; } } return { currentSession, nextSession }; }
+        function updateSessionCountdown() {
+            const displayElement = document.getElementById('session-countdown-display'); const agendaTableBody = document.getElementById('session-agenda-tbody'); if (!displayElement) return;
+            const { currentSession, nextSession } = findCurrentOrNextSession();
+            if(agendaTableBody){ agendaTableBody.querySelectorAll('tr.agenda-session-row').forEach(row => { row.classList.remove('is-current-session', 'is-next-session'); const sessionId = row.dataset.sessionId; if (currentSession && sessionId === currentSession.id) row.classList.add('is-current-session'); else if (nextSession && sessionId === nextSession.id) row.classList.add('is-next-session'); }); }
+            if (currentSession) { const end = parseDateTime(currentSession.endTime); const diff = end.getTime() - new Date().getTime(); const time = formatCountdown(diff); displayElement.innerHTML = `<div class="countdown-display"><span class="label">Current Session Ending In:</span><div class="timer">${formatCountdownTimerString(time)}</div><span class="session-info">${currentSession.title} (ends ${formatTime(end)})</span></div>`; }
+            else if (nextSession) { const start = parseDateTime(nextSession.startTime); const diff = start.getTime() - new Date().getTime(); const time = formatCountdown(diff); displayElement.innerHTML = `<div class="countdown-display"><span class="label">Next Session Starts In:</span><div class="timer">${formatCountdownTimerString(time)}</div><span class="session-info">${nextSession.title} (starts ${formatDate(start)} ${formatTime(start)})</span></div>`; }
+            else { displayElement.innerHTML = '<div class="countdown-display"><span class="label">No upcoming sessions in this view.</span></div>'; if (sessionCountdownInterval && !sessionAgenda.some(s => {const st = parseDateTime(s.startTime); return st && st > new Date();})) { clearInterval(sessionCountdownInterval); sessionCountdownInterval = null; } }
+        }
+        function updateFullscreenCountdown() { const { currentSession, nextSession } = findCurrentOrNextSession(); const now = new Date(); if (currentSession) { const end = parseDateTime(currentSession.endTime); const diff = end.getTime() - now.getTime(); const time = formatCountdown(diff); fullscreenTimerLabel.textContent = "Current Session Ending In:"; fullscreenTimer.textContent = formatCountdownTimerString(time); if (diff <= 0) exitFullscreen(); } else if (nextSession) { const start = parseDateTime(nextSession.startTime); const diff = start.getTime() - now.getTime(); const time = formatCountdown(diff); fullscreenTimerLabel.textContent = "Next Session Starts In:"; fullscreenTimer.textContent = formatCountdownTimerString(time); if (diff <= 0) exitFullscreen(); } else { fullscreenTimerLabel.textContent = "No Upcoming Sessions"; fullscreenTimer.textContent = "--"; if (fullscreenCountdownInterval) clearInterval(fullscreenCountdownInterval); fullscreenCountdownInterval = null; } }
+
+        // --- Agenda Filtering Logic ---
+        function getFilteredAgenda() { const todayDateStr = formatDate(new Date()); if (agendaFilter === 'today') { return sessionAgenda.filter(s => { const start = parseDateTime(s.startTime); return start && formatDate(start) === todayDateStr; }).sort((a, b) => parseDateTime(a.startTime) - parseDateTime(b.startTime)); } else if (agendaFilter === 'specific' && agendaFilterDate) { return sessionAgenda.filter(s => { const start = parseDateTime(s.startTime); return start && formatDate(start) === agendaFilterDate; }).sort((a, b) => parseDateTime(a.startTime) - parseDateTime(b.startTime)); } else { return [...sessionAgenda].sort((a, b) => { const chapterA = a.chapter || ''; const chapterB = b.chapter || ''; if (chapterA !== chapterB) { const dateA = parseDateTime(a.startTime); const dateB = parseDateTime(b.startTime); if(dateA && dateB) return dateA.getTime() - dateB.getTime(); return chapterA.localeCompare(chapterB); } return parseDateTime(a.startTime) - parseDateTime(b.startTime); }); } }
+
+        // --- Rendering Functions ---
+        function render() { updateProjectSettingsDisplay(); renderAgendaView(); startTimers(); }
+        function renderAgendaView() {
+             const agendaContainer = document.getElementById('sessionAgendaSection'); if (!agendaContainer) return;
+             let filterControls = agendaContainer.querySelector('.agenda-filter-controls');
+             if (!filterControls) {
+                 const controlsHTML = `<div class="agenda-filter-controls"><h4>Filter Agenda:</h4><button data-filter="all" class="filter-btn active">Show All Days</button><button data-filter="today" class="filter-btn">Show Today</button><button data-filter="specific" class="filter-btn">Show Specific Date</button><span id="specificDateFilterControls" class="specific-date-controls hidden"><label for="specificDateInput">Date:</label><input type="date" id="specificDateInput" value="${agendaFilterDate || ''}"></span></div><div class="agenda-table-wrapper"><table class="agenda-table" id="session-agenda-table"><tbody id="session-agenda-tbody"></tbody></table></div><div id="importExportSection" class="form-section collapsible-section collapsed" style="margin-top: 25px;"><h3>Import / Export Agenda <button class="toggle-button" data-target="importExportSection">Show</button></h3><div class="section-content form-grid" style="grid-template-columns: 1fr auto auto;"><div class="form-group"><label for="csvFileInput">Import from CSV:</label><input type="file" id="csvFileInput" accept=".csv"><small>Cols: Title, Facilitator, StartTime(YYYY-MM-DD HH:MM), EndTime(YYYY-MM-DD HH:MM), ImageSrc, Chapter</small></div><div class="form-group"><label>&nbsp;</label><button type="button" id="importCsvBtn" class="form-button import">Import CSV</button></div><div class="form-group"><label>Export Current Agenda:</label><button type="button" id="exportCsvBtn" class="form-button export">Export to CSV</button></div></div></div>`;
+                 const addFormElem = document.getElementById('addSessionFormContainer'); if(addFormElem) addFormElem.insertAdjacentHTML('afterend', controlsHTML);
+                 // Re-attach listeners for CSV elements specifically here if they are newly added
+                 document.getElementById('importCsvBtn')?.addEventListener('click', () => document.getElementById('csvFileInput')?.click());
+                 document.getElementById('csvFileInput')?.addEventListener('change', handleCsvImport);
+                 document.getElementById('exportCsvBtn')?.addEventListener('click', handleCsvExport);
+             } else { filterControls.querySelectorAll('.filter-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === agendaFilter)); filterControls.querySelector('#specificDateFilterControls')?.classList.toggle('hidden', agendaFilter !== 'specific'); const dateInput = filterControls.querySelector('#specificDateInput'); if(dateInput) dateInput.value = agendaFilterDate || ''; }
+             renderSessionTableBody(); loadCollapsibleState();
+        }
+        function renderSessionTableBody() {
+             const tbody = document.getElementById('session-agenda-tbody'); if(!tbody) return; tbody.innerHTML = ''; const filteredAgenda = getFilteredAgenda(); let currentRenderDate = null; let currentRenderChapter = null;
+             filteredAgenda.forEach(session => {
+                 const start = parseDateTime(session.startTime); const end = parseDateTime(session.endTime); const sessionDateStr = start ? formatDate(start) : null; const sessionChapter = session.chapter || '';
+                 if (agendaFilter === 'all' && sessionChapter && sessionChapter !== currentRenderChapter) { currentRenderChapter = sessionChapter; const chapterHeaderRow = document.createElement('tr'); chapterHeaderRow.classList.add('agenda-chapter-header'); const th = document.createElement('th'); th.colSpan = 4; th.textContent = sessionChapter; chapterHeaderRow.appendChild(th); tbody.appendChild(chapterHeaderRow); currentRenderDate = null; }
+                 if (agendaFilter === 'all' && sessionDateStr && sessionDateStr !== currentRenderDate) { currentRenderDate = sessionDateStr; const dayHeaderRow = document.createElement('tr'); dayHeaderRow.classList.add('agenda-day-header'); const th = document.createElement('th'); th.colSpan = 4; th.textContent = start.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }); dayHeaderRow.appendChild(th); tbody.appendChild(dayHeaderRow); }
+                 const tr = document.createElement('tr'); tr.classList.add('agenda-session-row'); tr.dataset.sessionId = session.id; const displayImageUrl = getSessionImageSource(session); const imageHTML = `<img src="${displayImageUrl}" alt="${session.facilitator || 'Session Icon'}" class="session-image" onerror="this.onerror=null; this.src='${defaultImageUrl}'; this.alt='Placeholder';">`;
+                 tr.innerHTML = `<td class="session-image-cell">${imageHTML}</td> <td class="session-info-cell"> <input type="text" class="list-inline-edit session-title-input" value="${session.title || ''}" data-session-id="${session.id}" data-field="title" placeholder="Session Title"> <input type="text" class="list-inline-edit session-facilitator-input" value="${session.facilitator || ''}" data-session-id="${session.id}" data-field="facilitator" placeholder="Facilitator"> </td> <td class="session-time-cell"> ${start ? formatTime(start) : 'Invalid'} - ${end ? formatTime(end) : 'Invalid'} <span class="session-duration">(${formatDuration(start, end)})</span> </td> <td class="col-actions"> <button class="action-btn edit-btn" data-session-id="${session.id}" title="Edit Session (Full)">&#9998;</button> <button class="action-btn delete-btn" data-session-id="${session.id}" title="Delete Session">&#10006;</button> </td>`; tbody.appendChild(tr);
+             });
+             updateSessionCountdown();
+        }
+
+        // --- UI Update Functions ---
+        function updateProjectSettingsDisplay() { projectNameDisplay.textContent = projectMetadata.projectName; projectNameInput.value = projectMetadata.projectName; projectStartDateInput.value = projectMetadata.projectStartDate; }
+
+        // --- LocalStorage for Collapsible Forms ---
+        const collapsibleStateKey = 'projectTimerCollapsibleState_v12';
+        function saveCollapsibleState() { const state = {}; document.querySelectorAll('.collapsible-section').forEach(section => { state[section.id] = section.classList.contains('collapsed'); }); try { localStorage.setItem(collapsibleStateKey, JSON.stringify(state)); } catch (e) { console.warn("Could not save collapsible state", e); } }
+        function loadCollapsibleState() { try { const savedState = JSON.parse(localStorage.getItem(collapsibleStateKey) || '{}'); document.querySelectorAll('.collapsible-section').forEach(section => { const button = document.querySelector(`button[data-target="${section.id}"]`); const defaultCollapsed = true; const shouldCollapse = savedState[section.id] === undefined ? defaultCollapsed : savedState[section.id]; section.classList.toggle('collapsed', shouldCollapse); if(button) button.textContent = shouldCollapse ? 'Show' : 'Hide'; }); } catch (e) { console.warn("Could not load collapsible state", e); } }
+
+        // --- Modal Handling ---
+        function showEditSessionModal(session) {
+            document.getElementById('editSessionIdHidden').value = session.id; document.getElementById('editSessionTitle').value = session.title || ''; document.getElementById('editSessionFacilitator').value = session.facilitator || ''; document.getElementById('editSessionChapter').value = session.chapter || '';
+            const start = parseDateTime(session.startTime); const end = parseDateTime(session.endTime);
+            document.getElementById('editSessionStartDate').value = formatDateForInputDate(start); document.getElementById('editSessionStartTime').value = formatTimeForInputTime(start);
+            document.getElementById('editSessionEndDate').value = formatDateForInputDate(end); document.getElementById('editSessionEndTime').value = formatTimeForInputTime(end);
+            const imageUrlInput = document.getElementById('editSessionImageUrl'); const imageFileInput = document.getElementById('editSessionImageFile'); const preview = document.getElementById('editSessionImagePreview'); const clearBtn = document.getElementById('editSessionClearImage'); const currentImageSrc = session.imageSrc || ''; imageUrlInput.value = currentImageSrc.startsWith('http') ? currentImageSrc : ''; imageFileInput.value = null;
+            if (currentImageSrc) { preview.src = getSessionImageSource(session); preview.classList.remove('hidden'); clearBtn.classList.remove('hidden'); } else { preview.src = '#'; preview.classList.add('hidden'); clearBtn.classList.add('hidden'); }
+            editSessionModal.classList.add('visible');
+        }
+        function hideEditSessionModal() { editSessionModal.classList.remove('visible'); }
+
+         // --- Image Preview Handler ---
+         function handleImagePreview(fileInputId, previewImgId, clearBtnId) { const fileInput = document.getElementById(fileInputId); const preview = document.getElementById(previewImgId); const clearButton = document.getElementById(clearBtnId); const urlInputId = fileInputId.replace('File','Url'); const urlInput = document.getElementById(urlInputId); if (fileInput.files && fileInput.files[0]) { const reader = new FileReader(); reader.onload = function(e) { preview.src = e.target.result; preview.classList.remove('hidden'); clearButton.classList.remove('hidden'); if(urlInput) urlInput.value = ''; } ; reader.readAsDataURL(fileInput.files[0]); } }
+         function clearImagePreview(fileInputId, previewImgId, clearBtnId, urlInputId) { const fileInput = document.getElementById(fileInputId); const preview = document.getElementById(previewImgId); const clearButton = document.getElementById(clearBtnId); const urlInput = document.getElementById(urlInputId); fileInput.value = null; preview.src = '#'; preview.classList.add('hidden'); clearButton.classList.add('hidden'); if(urlInput) urlInput.value = ''; }
+
+
+        // --- Event Handler Functions ---
+        function handleToggleCollapsible(e) { const target = e.target.closest('.toggle-button[data-target]'); if(!target) return; const targetId = target.dataset.target; const section = document.getElementById(targetId); if(section) { const isCollapsed = section.classList.toggle('collapsed'); target.textContent = isCollapsed ? 'Show' : 'Hide'; saveCollapsibleState(); } }
+        function handleFilterChange(e) { const target = e.target.closest('.filter-btn[data-filter]'); if (!target) return; const newFilter = target.dataset.filter; if (newFilter !== agendaFilter) { agendaFilter = newFilter; document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active')); target.classList.add('active'); const specificDateControls = document.getElementById('specificDateFilterControls'); const specificDateInput = document.getElementById('specificDateInput'); if(specificDateControls) specificDateControls.classList.toggle('hidden', agendaFilter !== 'specific'); agendaFilterDate = ''; if(specificDateInput) specificDateInput.value = ''; if(agendaFilter !== 'specific') { renderSessionTableBody(); updateSessionCountdown(); } else { const today = new Date(); specificDateInput.value = formatDateForInputDate(today); agendaFilterDate = specificDateInput.value; renderSessionTableBody(); updateSessionCountdown(); specificDateInput?.focus(); } } }
+        function handleSpecificDateChange(e) { if (agendaFilter === 'specific') { agendaFilterDate = e.target.value; renderSessionTableBody(); updateSessionCountdown(); } }
+        function handleAddSession(e) {
+             e.preventDefault();
+             const title = document.getElementById('sessionTitle').value.trim(); const facilitator = document.getElementById('sessionFacilitator').value.trim(); const chapter = document.getElementById('sessionChapter').value.trim(); const startDate = document.getElementById('sessionStartDate').value; const startTime = document.getElementById('sessionStartTime').value; const endDate = document.getElementById('sessionEndDate').value; const endTime = document.getElementById('sessionEndTime').value; const imageUrl = document.getElementById('sessionImageUrl').value.trim(); const imageFile = document.getElementById('sessionImageFile').files[0]; const previewSrc = document.getElementById('addSessionImagePreview').src;
+             if (!title || !facilitator || !startDate || !startTime || !endDate || !endTime) { alert("Please fill required Title, Facilitator, Start & End fields."); return; }
+             const startDateTimeStr = `${startDate} ${startTime}`; const endDateTimeStr = `${endDate} ${endTime}`; const start = parseDateTime(startDateTimeStr); const end = parseDateTime(endDateTimeStr);
+             if (!start || !end || start >= end) { alert("Invalid dates/times or End is not after Start."); return; }
+
+             let finalImageSrc = ''; if (imageFile && previewSrc.startsWith('data:image')) { finalImageSrc = previewSrc; } else if (imageUrl) { finalImageSrc = imageUrl; }
+             const newId = `sess-${Date.now()}`;
+             const bufferMillis = 15 * 60 * 1000;
+
+             // --- Auto-shift logic V13 (Only shifts on same day, preserves duration) ---
+             let subsequentSessionsShifted = false;
+             let previousSessionEndTime = new Date(end.getTime()); // End time of the newly added session
+             const newSessionDay = formatDate(start);
+
+             // Get all sessions starting *at or after* the new session's start time ON THE SAME DAY, sorted
+             const sessionsToPotentiallyShift = sessionAgenda
+                 .filter(s => { const sStart = parseDateTime(s.startTime); return sStart && formatDate(sStart) === newSessionDay && sStart >= start; })
+                 .sort((a, b) => parseDateTime(a.startTime) - parseDateTime(b.startTime));
+
+             sessionsToPotentiallyShift.forEach(sessionToShift => {
+                 const originalStart = parseDateTime(sessionToShift.startTime);
+                 const originalEnd = parseDateTime(sessionToShift.endTime);
+                 if (originalStart && originalEnd) {
+                     const originalDurationMillis = originalEnd.getTime() - originalStart.getTime();
+                     // Calculate new start time based on the *previous* session's end time + buffer
+                     const newStartTime = addMinutes(previousSessionEndTime, 15);
+                     const newEndTime = new Date(newStartTime.getTime() + originalDurationMillis); // Maintain original duration
+
+                     // Find the session in the main array and update it
+                     const mainIndex = sessionAgenda.findIndex(s => s.id === sessionToShift.id);
+                     if (mainIndex !== -1) {
+                         if (sessionAgenda[mainIndex].startTime !== formatDateTimeToString(newStartTime) || sessionAgenda[mainIndex].endTime !== formatDateTimeToString(newEndTime)) {
+                             sessionAgenda[mainIndex].startTime = formatDateTimeToString(newStartTime);
+                             sessionAgenda[mainIndex].endTime = formatDateTimeToString(newEndTime);
+                             subsequentSessionsShifted = true;
+                         }
+                     }
+                     previousSessionEndTime = newEndTime; // Use the NEW end time for the next iteration
+                 }
+             });
+             // --- End Auto-shift logic ---
+
+             sessionAgenda.push({ id: newId, title, facilitator, chapter, startTime: startDateTimeStr, endTime: endDateTimeStr, imageSrc: finalImageSrc });
+             renderSessionTableBody(); updateSessionCountdown(); document.getElementById('addSessionForm').reset(); clearImagePreview('sessionImageFile','addSessionImagePreview','addSessionClearImage', 'sessionImageUrl');
+             if(subsequentSessionsShifted) alert("Subsequent sessions on the same day have been automatically shifted forward.");
+        }
+        function handleEditSession(e) {
+            e.preventDefault();
+            const id = document.getElementById('editSessionIdHidden').value;
+            const originalSessionIndex = sessionAgenda.findIndex(s => s.id === id);
+            if (originalSessionIndex === -1) { alert("Error: Original session not found."); return; }
+            const originalSession = JSON.parse(JSON.stringify(sessionAgenda[originalSessionIndex])); // Deep copy for original times
+            const originalStartTime = parseDateTime(originalSession.startTime);
+            const originalEndTime = parseDateTime(originalSession.endTime);
+
+            // Get new values from form
+            const title = document.getElementById('editSessionTitle').value.trim(); const facilitator = document.getElementById('editSessionFacilitator').value.trim(); const chapter = document.getElementById('editSessionChapter').value.trim(); const startDate = document.getElementById('editSessionStartDate').value; const startTime = document.getElementById('editSessionStartTime').value; const endDate = document.getElementById('editSessionEndDate').value; const endTime = document.getElementById('editSessionEndTime').value; const imageUrl = document.getElementById('editSessionImageUrl').value.trim(); const imageFile = document.getElementById('editSessionImageFile').files[0]; const previewSrc = document.getElementById('editSessionImagePreview').src;
+            if (!title || !facilitator || !startDate || !startTime || !endDate || !endTime) { alert("Please fill required fields."); return; }
+            const startDateTimeStr = `${startDate} ${startTime}`; const endDateTimeStr = `${endDate} ${endTime}`; const newStart = parseDateTime(startDateTimeStr); const newEnd = parseDateTime(endDateTimeStr);
+            if (!newStart || !newEnd || newStart >= newEnd) { alert("Invalid dates/times or End is not after Start."); return; }
+
+            let finalImageSrc = ''; const previewImg = document.getElementById('editSessionImagePreview'); if (imageFile && previewSrc.startsWith('data:image')) { finalImageSrc = previewSrc; } else if (imageUrl) { finalImageSrc = imageUrl; } else if (!previewImg.classList.contains('hidden') && previewSrc && previewSrc !== '#') { finalImageSrc = originalSession.imageSrc || ''; }
+
+            const bufferMillis = 15 * 60 * 1000; const newEndTimeMs = newEnd.getTime(); let totalShiftMillis = 0; let subsequentSessionsShifted = false;
+
+            // --- Calculate Time Shift ONLY if end time changed significantly ---
+            if (originalEndTime && Math.abs(newEndTimeMs - originalEndTime.getTime()) > 1000) {
+                const sortedOriginalAgenda = [...sessionAgenda].sort((a, b) => parseDateTime(a.startTime) - parseDateTime(b.startTime));
+                let nextSessionOriginalStart = null;
+                const editedSessionOriginalIndex = sortedOriginalAgenda.findIndex(s => s.id === id);
+
+                // Find the session that *originally* started at or after the edited session's *original* end time
+                 if (editedSessionOriginalIndex !== -1) {
+                     for (let i = editedSessionOriginalIndex + 1; i < sortedOriginalAgenda.length; i++) {
+                         const nextStart = parseDateTime(sortedOriginalAgenda[i].startTime);
+                         if (nextStart) { // Find the very next one
+                             nextSessionOriginalStart = nextStart;
+                             break;
+                         }
+                     }
+                 }
+
+                if (nextSessionOriginalStart) {
+                    const idealStartTimeForNext = new Date(newEndTimeMs + bufferMillis);
+                    totalShiftMillis = idealStartTimeForNext.getTime() - nextSessionOriginalStart.getTime();
+                }
+
+                // --- Apply Shift (ONLY TO SAME DAY)---
+                 if (Math.abs(totalShiftMillis) > 1000) {
+                     const editedSessionDay = formatDate(originalStartTime); // Day of the session being edited
+                      sessionAgenda.forEach(sessionToShift => {
+                         if (sessionToShift.id !== id) { // Don't shift the edited session itself
+                             const originalShiftStart = parseDateTime(sessionToShift.startTime);
+                             const originalShiftEnd = parseDateTime(sessionToShift.endTime);
+                             // Shift if it's on the SAME DAY and started AFTER the session that originally followed the edited one
+                             if (originalShiftStart && originalShiftEnd &&
+                                 formatDate(originalShiftStart) === editedSessionDay && // Check same day
+                                 nextSessionOriginalStart && originalShiftStart >= nextSessionOriginalStart)
+                             {
+                                 sessionToShift.startTime = formatDateTimeToString(new Date(originalShiftStart.getTime() + totalShiftMillis));
+                                 sessionToShift.endTime = formatDateTimeToString(new Date(originalShiftEnd.getTime() + totalShiftMillis));
+                                 subsequentSessionsShifted = true;
+                             }
+                         }
+                      });
+                 }
+            }
+            // --- End Time Shift Logic ---
+
+            // Update the edited session itself
+            sessionAgenda[originalSessionIndex] = { id, title, facilitator, chapter, startTime: startDateTimeStr, endTime: endDateTimeStr, imageSrc: finalImageSrc };
+
+            hideEditSessionModal();
+            renderSessionTableBody();
+            updateSessionCountdown();
+            if (subsequentSessionsShifted) alert("Subsequent sessions on the same day have been automatically shifted due to end time change.");
+        }
+
+        // --- Fullscreen --- (Unchanged)
+        function openFullscreen() { const { currentSession, nextSession } = findCurrentOrNextSession(); const targetSession = currentSession || nextSession; if (!targetSession) { alert("No current or upcoming session to display in fullscreen."); return; } fullscreenSessionTitle.textContent = targetSession.title; fullscreenSessionFacilitator.textContent = `Facilitator: ${targetSession.facilitator || 'N/A'}`; fullscreenImage.src = getSessionImageSource(targetSession); fullscreenImage.onerror = () => { fullscreenImage.src = defaultImageUrl; fullscreenImage.alt = 'Placeholder Image'; }; if (fullscreenCountdownInterval) clearInterval(fullscreenCountdownInterval); updateFullscreenCountdown(); fullscreenCountdownInterval = setInterval(updateFullscreenCountdown, 1000); fullscreenOverlay.classList.add('visible'); if (fullscreenOverlay.requestFullscreen) fullscreenOverlay.requestFullscreen().catch(err => console.error(`FS Error: ${err.message} (${err.name})`)); else if (fullscreenOverlay.webkitRequestFullscreen) fullscreenOverlay.webkitRequestFullscreen(); else if (fullscreenOverlay.msRequestFullscreen) fullscreenOverlay.msRequestFullscreen(); }
+        function exitFullscreen() { if (fullscreenCountdownInterval) clearInterval(fullscreenCountdownInterval); fullscreenOverlay.classList.remove('visible'); if (document.exitFullscreen) document.exitFullscreen().catch(err => console.error(`Exit FS Error: ${err.message} (${err.name})`)); else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); else if (document.msExitFullscreen) document.msExitFullscreen(); }
+        document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) { exitFullscreen(); } });
+        document.addEventListener('webkitfullscreenchange', () => { if (!document.webkitFullscreenElement) { exitFullscreen(); } });
+        document.addEventListener('msfullscreenchange', () => { if (!document.msFullscreenElement) { exitFullscreen(); } });
+         // --- CSV Handling --- (Unchanged)
+        function parseCSV(csvText) { const lines = csvText.split(/\r?\n/); const data = []; const headerLine = lines[0].toLowerCase(); const hasHeader = headerLine.includes('title') && headerLine.includes('starttime'); const startIndex = hasHeader ? 1 : 0; for (let i = startIndex; i < lines.length; i++) { if (!lines[i].trim()) continue; const values = []; let currentVal = ''; let inQuotes = false; for (let char of lines[i]) { if (char === '"') { inQuotes = !inQuotes; continue; } if (char === ',' && !inQuotes) { values.push(currentVal.trim()); currentVal = ''; continue; } currentVal += char; } values.push(currentVal.trim()); if (values.length >= 4) { data.push({ title: values[0] || '', facilitator: values[1] || '', startTime: values[2] || '', endTime: values[3] || '', imageSrc: values[4] || '', chapter: values[5] || '' }); } else { console.warn(`Skipping malformed CSV line ${i + 1}: ${lines[i]}`); } } return data; }
+        function handleCsvImport(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { try { const importedData = parseCSV(e.target.result); if (importedData.length === 0) { alert("No valid session data found in CSV."); return; } const validSessions = []; const invalidSessions = []; const headerLine = e.target.result.split(/\r?\n/)[0] || ''; importedData.forEach((item, index) => { const start = parseDateTime(item.startTime); const end = parseDateTime(item.endTime); if (item.title && item.facilitator && start && end && start < end) { validSessions.push({ ...item, id: `csv-${Date.now()}-${index}` }); } else { invalidSessions.push(`Line ${index + (headerLine.toLowerCase().includes('title') ? 2 : 1)}: ${item.title || '?'}`); } }); if (invalidSessions.length > 0) { alert(`Warning: ${invalidSessions.length} sessions had invalid data/format and were skipped:\n${invalidSessions.slice(0, 5).join('\n')}${invalidSessions.length > 5 ? '\n...' : ''}`); } if (validSessions.length === 0) { alert("No sessions with valid format found to import."); return; } const replace = confirm(`Found ${validSessions.length} valid sessions.\nOK to REPLACE current agenda, Cancel to APPEND?`); if (replace) { sessionAgenda = validSessions; } else { sessionAgenda = sessionAgenda.concat(validSessions); } render(); alert(`Successfully ${replace ? 'replaced' : 'appended'} ${validSessions.length} sessions.`); } catch (error) { console.error("Error parsing CSV:", error); alert("Could not parse CSV file. Please check format and content."); } finally { event.target.value = null; } }; reader.readAsText(file); }
+        function handleCsvExport() { if (sessionAgenda.length === 0) { alert("No agenda data to export."); return; } const headers = "Title,Facilitator,StartTime,EndTime,ImageSrc,Chapter"; const rows = sessionAgenda.map(s => [`"${(s.title || '').replace(/"/g, '""')}"`,`"${(s.facilitator || '').replace(/"/g, '""')}"`,`"${s.startTime || ''}"`,`"${s.endTime || ''}"`,`"${(s.imageSrc || '').replace(/"/g, '""')}"`,`"${(s.chapter || '').replace(/"/g, '""')}"`].join(',')); const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\r\n"); const encodedUri = encodeURI(csvContent); const link = document.createElement("a"); link.setAttribute("href", encodedUri); link.setAttribute("download", `${projectMetadata.projectName}_Agenda_${formatDate(new Date())}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+
+
+        // --- Attach Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            projectMetadata.projectStartDate = formatDateForInputDate(new Date()); // Default start date
+
+            // Static element listeners
+            projectSettingsForm.addEventListener('submit', (e) => { e.preventDefault(); const newName = projectNameInput.value.trim(); const newStartDate = projectStartDateInput.value; if (!newName || !parseJustDate(newStartDate)) { alert("Invalid Project Name or Start Date."); return; } projectMetadata.projectName = newName; projectMetadata.projectStartDate = newStartDate; render(); });
+            editSessionForm.addEventListener('submit', handleEditSession); // Attach listener for modal save
+            cancelSessionEditButton.addEventListener('click', hideEditSessionModal);
+            editSessionModal.addEventListener('click', (e) => { if (e.target === editSessionModal) hideEditSessionModal(); });
+            document.getElementById('fullscreenTimerBtn').addEventListener('click', openFullscreen);
+            exitFullscreenBtn.addEventListener('click', exitFullscreen);
+            document.getElementById('addSessionForm').addEventListener('submit', handleAddSession);
+            document.getElementById('importCsvBtn')?.addEventListener('click', () => document.getElementById('csvFileInput')?.click());
+            document.getElementById('csvFileInput')?.addEventListener('change', handleCsvImport);
+            document.getElementById('exportCsvBtn')?.addEventListener('click', handleCsvExport);
+            document.getElementById('sessionImageFile')?.addEventListener('change', () => handleImagePreview('sessionImageFile','addSessionImagePreview','addSessionClearImage'));
+            document.getElementById('addSessionClearImage')?.addEventListener('click', () => clearImagePreview('sessionImageFile','addSessionImagePreview','addSessionClearImage','sessionImageUrl'));
+            document.getElementById('editSessionImageFile')?.addEventListener('change', () => handleImagePreview('editSessionImageFile','editSessionImagePreview','editSessionClearImage'));
+            document.getElementById('editSessionClearImage')?.addEventListener('click', () => clearImagePreview('editSessionImageFile','editSessionImagePreview','editSessionClearImage','editSessionImageUrl'));
+
+             // Delegated listeners attached to BODY
+             document.body.addEventListener('click', (e) => {
+                 if (e.target.matches('.toggle-button[data-target]')) { handleToggleCollapsible(e); return; }
+                 if (e.target.matches('.filter-btn[data-filter]')) { handleFilterChange(e); return; }
+                 const editButton = e.target.closest('button.edit-btn[data-session-id]');
+                 const deleteButton = e.target.closest('button.delete-btn[data-session-id]');
+                 if (editButton) { const sessionId = editButton.dataset.sessionId; const sessionToEdit = sessionAgenda.find(s => s.id === sessionId); if (sessionToEdit) showEditSessionModal(sessionToEdit); else alert("Session not found for editing."); return; }
+                 if (deleteButton) { const sessionId = deleteButton.dataset.sessionId; const sessionTitle = sessionAgenda.find(s => s.id === sessionId)?.title || sessionId; if (confirm(`Delete session "${sessionTitle}"?`)) { sessionAgenda = sessionAgenda.filter(s => s.id !== sessionId); renderSessionTableBody(); updateSessionCountdown(); } return; }
+             });
+             document.body.addEventListener('change', (e) => {
+                 if (e.target.matches('#specificDateInput')) { handleSpecificDateChange(e); return; }
+                 if (e.target.matches('.list-inline-edit')) {
+                     const input = e.target; const sessionId = input.dataset.sessionId; const field = input.dataset.field; const newValue = input.value.trim(); const sessionIndex = sessionAgenda.findIndex(s => s.id === sessionId);
+                     if (sessionIndex !== -1 && field && sessionAgenda[sessionIndex][field] !== newValue) { sessionAgenda[sessionIndex][field] = newValue; console.log(`Inline updated ${sessionId}.${field} to ${newValue}`); input.style.transition = 'background-color 0.1s ease-in-out'; input.style.backgroundColor = '#e0ffe0'; setTimeout(() => { input.style.backgroundColor = 'transparent'; }, 800); }
+                 }
+             });
+
+            loadCollapsibleState(); // Load visibility state first
+            render(); // Initial full render
+        });
+
+         // --- Start Timers ---
+         function startTimers() { if (projectCountdownInterval) clearInterval(projectCountdownInterval); updateProjectCountdown(); projectCountdownInterval = setInterval(updateProjectCountdown, 1000); if (sessionCountdownInterval) clearInterval(sessionCountdownInterval); updateSessionCountdown(); sessionCountdownInterval = setInterval(updateSessionCountdown, 1000); }
+
+    </script>
+
+</body>
+</html>
